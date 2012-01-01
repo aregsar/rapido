@@ -1,0 +1,2245 @@
+
+Rapido dynamic library for asp.net mvc
+
+
+The Rapido dynamic library for asp.net mvc is a library that uses many of the dynamic features introduced in c# 3 and 4
+To build a lightweight and flexible web development framework.These include the dynamic type, ExpandoObject type anonymous objects and RouteValueDictionaries. 
+
+The library uses naming conventions and c# dynamic types to reduce amount of code and application layers and allow code to be
+easily modified. It tries to build in constructs that allow the programmer to write much less code to accomplish tasks
+such as data access with very few lines of code.
+
+It is designed for removing most logic, including databinding and validation out of the asp.net mvc controller and view layers and into the model layer.
+
+This library was inspired by the work done by Rob Connery's Tekpub series Real world asp.net mvc www.Tekpub.com
+
+
+
+This document serves as a resource for using the Rapido dynamic API 
+Since the API is based on dynamic types, there is no intellisense support
+Instead consistant naming conventions along with this guide can be used to effectively use the API
+
+The surface area of the API is very limited so once the naming conventions
+become familiar, lack of intellisense support should not be an issue.
+
+-Major components of the Rapido library are:
+
+-Section 1 - Routes
+
+-Section 2 - DynamicWebViewPage 
+
+-Section 3 - DynamicController 
+
+-Section 4 - SessionController
+
+-Section 5 - DynamicEntity
+
+-Section 6 - EntityQuery
+
+-Section 7 - Validation and Validation Errors 
+
+-Section 8 - Database Migrations
+
+-Section 9 - Utilities
+
+any component can be used independantly and all components work with any standard asp.net or asp.net mvc component
+
+You can still use all traditional parts of asp.net mvc along side this library.
+
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 1
+
+Routes
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 	
+Note:The routing assumes the convention of one route with a unique route name per controller action (note: actions that respond to multiple http verbs can share the same route
+or have independent routes based on the http verb)
+
+
+
+		----------------------------------------------------------------------------------------------
+		Routes class example
+		----------------------------------------------------------------------------------------------
+		public class Routes
+		{
+			
+       			 	private static HttpMethodConstraint get = new HttpMethodConstraint("GET");
+        			private static HttpMethodConstraint post = new HttpMethodConstraint("PUT");
+        			private static HttpMethodConstraint put = new HttpMethodConstraint("POST");
+        			private static HttpMethodConstraint delete = new HttpMethodConstraint("DELETE");
+
+        			private static UrlParameter opt { get { return UrlParameter.Optional; } }
+
+
+			//This method is called from global.asax
+			public static void Map(dynamic routeFor)
+			{
+	    			RouteTable.Routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
+            			RouteTable.Routes.IgnoreRoute("content/{*pathInfo}");
+
+
+				//examples:
+				routeFor.home_index(""); //route name = "home_index", get,post==> \
+				
+				routeFor.home_about("about"); //route name = "home_about", get,post ==> \about
+						
+				routeFor.account_create("account\create"); //route name = "account_create", get,post ==> \account\create
+				
+				routeFor.account_create("account\create\{id}",new{id = 1}); //get,post ==> \account\create
+				
+				routeFor.account_create("account\create\{id}",new{id = "one"}); //get,post ==> \account\create
+				
+				routeFor.account_create("account\create\{id}",new{id = opt}); //get,post ==> \account\create
+				
+				routeFor.account_create("account\create\{id}\{name}",new{id= 1, name = "one"}); //get,post ==> \account\create
+				
+				routeFor.account_create("account\create\{id}\{name}",new{id= 1, name = opt}); //get,post ==> \account\create
+				
+				routeFor.get_home_about("about"); //get ==> \about
+
+				routeFor.post_account_create("account\create"); //post ==> \account\create
+				
+				routeFor.post_account_create("account\create\{id}",new{id = 1}); //post ==> \account\create
+				
+				routeFor.post_account_create("account\create\{id}",new{id = "one"}); //post ==> \account\create
+				
+				routeFor.post_account_create("account\create\{id}",new{id = opt}); //post ==> \account\create
+				
+				routeFor.post_account_create("account\create\{id}\{name}",new{id= 1, name = "one"}); //post ==> \account\create
+				
+				routeFor.post_account_create("account\create\{id}\{name}",new{id= 1, name = opt}); //post ==> \account\create
+	
+				//Additions for Future API
+				//routeFor.account_create("account\create\{id}",new{id = 1},new { customconstraint = new CustomConstraint() }); //==> \account\create				 
+				//routeFor.account_create("account\create",null,new { customconstraint = new CustomConstraint() }); //==> \account\create
+				//routeFor.account_create("account\create\{id}",new{id = 1},new { httpMethod = post, customconstraint = new CustomConstraint() }); //==> \account\create		 
+				//routeFor.account_create("account\create",null,new {httpMethod = post, customconstraint = new CustomConstraint() }); //==> \account\create
+  
+	
+  				RouteTable.Routes.MapRoute("Error_NotFound", "notfound", new { controller = "Error", action = "NotFound" });
+            			RouteTable.Routes.MapRoute("Error_NotFound_CatchAll", "{*url}", new { controller = "Error", action = "NotFound" });
+			}
+		}
+		
+	
+		
+		//by convention the method called on the dynamic routeFor parameter passed to the Map() method has one of two forms:
+		//1- a two part method with acontroller_action that specifies the route name that the route maps to
+		//2- a three part method with httpverb_acontroller_action that specifies  the route name that the route maps to
+		
+		
+		//-----------------------------------------------------------
+		//The general API is listed below:
+         	
+		routeFor.controller_action("url route maps to");
+		
+		routeFor.controller_action("url route maps to", params);
+		
+		routeFor.httpverb_controller_action("url route maps to");
+		
+		routeFor.httpverb_controller_action("url route maps to", params);
+		
+		//Additions for Future API
+		//routeFor.controller_action("url route maps to", params, httpconstraints);	
+		//routeFor.controller_action("url route maps to", null, httpconstraints);
+
+		
+
+
+
+
+    public class MvcApplication : System.Web.HttpApplication
+    {
+
+        protected void Application_Start()
+        {
+	    AppSettings.LoadFromConfig();
+	    ConnectionStrings.LoadFromConfig();
+	    Logging.LoadFromConfig();
+
+
+            Routes.Map(new DynamicRouteMap(RouteTable.Routes));
+
+
+	    ViewEngines.Engines.Clear();
+            ViewEngines.Engines.Add(new RazorViewEngine());
+        }
+
+
+
+        protected void Application_BeginRequest(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void Application_EndRequest(object sender, EventArgs e)
+        {
+            LoggingServiceProxy client = new LoggingServiceProxy();
+
+            client.LogRequestAsync(baseEx.Message, baseEx.StackTrace);
+        }
+
+        protected void Application_Error(object sender, EventArgs e)
+        {
+            Exception lastEx = Server.GetLastError();
+
+            Exception baseEx = lastEx.GetBaseException();
+
+            SqlException sqlEx = baseEx as SqlException;
+
+            //LoggingServiceProxy client = new LoggingServiceProxy();
+
+            if (sqlEx != null)
+            {
+                //client.LogDatabaseErrorAsync(sqlEx.ErrorCode, sqlEx.Number,sqlEx.State,sqlEx.Message,sqlEx.StackTrace);
+            }
+            else
+            {
+                //client.LogRequestErrorAsync(baseEx.Message,baseEx.StackTrace);
+            }
+
+        }
+    }
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 2
+DynamicWebViewPage 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<T> class
+	
+	The replacement view class that specifies dynamic properties that can be used by Razor 
+	----------------------------------------------------------------------------------------------
+	public abstract class DynamicWebViewPage<T> : WebViewPage
+    {
+
+		/*
+		Instructions for registering this DynamicWebViewPage class with razor:
+		
+		Inside the <system.web.webPages.razor> tag in the views\Web.config file
+			
+		Change the value of the pageBaseType attribute of the <pages> tag 
+		from System.Web.Mvc.WebViewPage
+		to <yourmvcprojectname>.Application.Infrastructure.Mvc.DynamicWebViewPage
+		
+		example:
+		<system.web.webPages.razor>
+			<pages pageBaseType="Rapido.Application.Infrastructure.Mvc.DynamicWebViewPage">
+		</system.web.webPages.razor>
+		*/
+	
+		//By convention the api methods use the route name comprised of controllername underscore actionname. 
+	
+	
+		//relative Url path
+			public dynamic UrlFor { get; set; }
+	
+		//link with relative Url path
+			public dynamic LinkTo { get; set; }
+	
+		//absolute Url path
+			public dynamic HttpUrlFor { get; set; }
+	
+		//link with absolute Url path
+			public dynamic HttpLinkTo { get; set; }
+	
+		//absolute secure Url path
+			public dynamic HttpsUrlFor { get; set; }
+	
+		//link with absolute secure Url path
+			public dynamic HttpsLinkTo { get; set; }
+	
+		//form post to relative Url path
+			public dynamic FormPostTo { get; set; }
+	
+		//form with get action to relative Url path
+			public dynamic FormGetTo { get; set; }
+	
+		//form post to absolute Url path
+			public dynamic HttpFormPostTo { get; set; }
+	
+		//form with get action to absolute Url path
+			public dynamic HttpFormGetTo { get; set; }
+	
+		//form post to absolute secure Url path
+			public dynamic HttpsFormPostTo { get; set; }
+	
+		//form with get action to absolute secure Url path
+			public dynamic HttpsFormGetTo { get; set; }
+	
+		//Text input for form key value
+			public dynamic TextBoxFor { get; set; }
+	
+		//Text Area input for form key value
+			public dynamic TextAreaFor { get; set; }
+	
+		//Password input for form key value
+			public dynamic PasswordBoxFor { get; set; }
+	
+		//Checkbox input for form key value
+			public dynamic CheckBoxFor { get; set; }
+	
+		//submit input for form key value
+			public dynamic SubmitButtonFor { get; set; }
+	   
+		   
+		//check authentication in view
+			public bool IsAuthenticated { get; set; }
+	
+		
+		//content tag helper
+			public Content Content { get; set; }
+	
+		//copyright message helper
+			public MvcHtmlString Copyright{ get;  }
+	
+	}
+	
+	
+	==============================================================================================
+	API usage for each property of DynamicWebViewPage<T>
+	==============================================================================================
+	
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.UrlFor Razor API
+	
+	-generates relative url paths
+	----------------------------------------------------------------------------------------------
+
+
+	@UrlFor.home_index
+	
+	@UrlFor.home_index()
+	
+	//url with default parameter name "id"	
+	@UrlFor.home_index("one")
+	
+	//url with default parameter name "id"
+	@UrlFor.home_index(1)
+	
+	//url with explicit parameter name "id"	
+	@UrlFor.home_index(new {id = 1})
+	
+	@UrlFor.home_index(new {id = 1,num="one"})
+	
+	
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpUrlFor Razor API
+	
+	-generates absolute url paths
+	----------------------------------------------------------------------------------------------
+
+	@HttpUrlFor.home_index
+	@HttpUrlFor.home_index()
+	@HttpUrlFor.home_index("one")
+	@HttpUrlFor.home_index(1)
+	@HttpUrlFor.home_index(new {id = 1})
+	@HttpUrlFor.home_index(new {id = 1,num="one"})
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpsUrlFor Razor API
+	
+	-generates absolute secure url paths
+	----------------------------------------------------------------------------------------------
+
+
+	@HttpsUrlFor.home_index
+	@HttpsUrlFor.home_index()
+	@HttpsUrlFor.home_index("one")
+	@HttpsUrlFor.home_index(1)
+	@HttpsUrlFor.home_index(new {id = 1})
+	@HttpsUrlFor.home_index(new {id = 1,num="one"})
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.LinkTo Razor API
+	
+	-generates anchor tags with relative url path
+	----------------------------------------------------------------------------------------------
+
+
+	//a link
+	@LinkTo.home_index("click me")
+	
+	//a link with html attributes as named parameters (note the underscore for the special case of css class property)
+	@LinkTo.home_index("click me", _class: "cssClass", id: "cssId")
+	
+	@LinkTo.home_index("click me", "one")
+	@LinkTo.home_index("click me", "one", _class: "cssClass", id: "cssId")
+	
+	@LinkTo.home_index("click me", 1)
+	@LinkTo.home_index("click me", 1, _class: "cssClass", id: "cssId")
+	
+	@LinkTo.home_index("click me", new {id = 1})
+	@LinkTo.home_index("click me", new {id = 1}, _class: "cssClass", id: "cssId")
+	
+	
+	@LinkTo.home_index("click me", new {id = 1,num="one"})
+	@LinkTo.home_index("click me", new {id = 1,num="one"}, _class: "cssClass", id: "cssId")
+
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpLinkTo Razor API
+	
+	-generates anchor tags with absolute url path
+	----------------------------------------------------------------------------------------------
+
+
+
+
+	//a link
+	@HttpLinkTo.home_index("click me")
+	
+	//a link with html attributes as named parameters 
+	@HttpLinkTo.home_index("click me", _class: "cssClass", id: "cssId")
+	
+	@HttpLinkTo.home_index("click me", "one")
+	@HttpLinkTo.home_index("click me", "one", _class: "cssClass", id: "cssId")
+	
+	@HttpLinkTo.home_index("click me", 1)
+	@HttpLinkTo.home_index("click me", 1, _class: "cssClass", id: "cssId")
+	
+	@HttpLinkTo.home_index("click me", new {id = 1})
+	@HttpLinkTo.home_index("click me", new {id = 1}, _class: "cssClass", id: "cssId")
+	
+	@HttpLinkTo.home_index("click me", new {id = 1,num="one"})
+	@HttpLinkTo.home_index("click me", new {id = 1,num="one"}, _class: "cssClass", id: "cssId")
+	
+	
+	
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpsLinkTo Razor API
+	
+	-generates anchor tags with absolute url path
+	----------------------------------------------------------------------------------------------
+
+
+
+	//a link
+	@HttpsLinkTo.home_index("click me")
+	
+	//a link with html attributes as named parameters 
+	@HttpsLinkTo.home_index("click me", _class: "cssClass", id: "cssId")
+	
+	@HttpsLinkTo.home_index("click me", "one")
+	@HttpsLinkTo.home_index("click me", "one", _class: "cssClass", id: "cssId")
+	
+	@HttpsLinkTo.home_index("click me", 1)
+	@HttpsLinkTo.home_index("click me", 1, _class: "cssClass", id: "cssId")
+	
+	@HttpsLinkTo.home_index("click me", new {id = 1})
+	@HttpsLinkTo.home_index("click me", new {id = 1}, _class: "cssClass", id: "cssId")
+	
+	@HttpsLinkTo.home_index("click me", new {id = 1,num="one"})
+	@HttpsLinkTo.home_index("click me", new {id = 1,num="one"}, _class: "cssClass", id: "cssId")
+
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.FormPostTo  Razor API
+	
+	-generates a html form with post action to a relative url
+	----------------------------------------------------------------------------------------------
+
+
+
+	@using(FormPostTo.account_create){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create()){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create(1)){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create("one")){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create(new {id = 1})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create(new {id = "one"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	
+	  
+	@using(FormPostTo.account_create(1,new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create("one",new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create(new {id = 1},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(FormPostTo.account_create(new {id = "one"},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	 
+	//FormPostTo with html attributes but no parameters uses null as the first argument
+	@using(FormPostTo.account_create(null,new {@class = "cssClass", id: "cssId"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpFormPostTo  Razor API
+	
+	-generates a html form with post action to a absolute url
+	----------------------------------------------------------------------------------------------
+
+ 
+
+	@using(HttpFormPostTo.account_create){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create()){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(1)){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create("one")){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = 1})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = "one"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	
+	  
+	@using(HttpFormPostTo.account_create(1,new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create("one",new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = 1},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = "one"},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	 
+	
+	@using(HttpFormPostTo.account_create(null,new {@class = "cssClass", id: "cssId"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpsFormPostTo  Razor API
+	
+	-generates a html form with post action to a absolute secure url
+	----------------------------------------------------------------------------------------------
+
+
+	@using(HttpFormPostTo.account_create){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create()){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(1)){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create("one")){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = 1})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = "one"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	
+	  
+	@using(HttpFormPostTo.account_create(1,new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create("one",new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = 1},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	@using(HttpFormPostTo.account_create(new {id = "one"},new {@class = "cssClass", id: "cssId"}) ){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	 
+	
+	@using(HttpFormPostTo.account_create(null,new {@class = "cssClass", id: "cssId"})){ @Html.AntiForgeryToken() @TextBoxFor.email @SubmitButtonFor.account_create("Submit")}
+	
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.FormGetTo  Razor API
+
+	
+	-same as DynamicWebViewPage<dynamic>.FormPostTo
+	----------------------------------------------------------------------------------------------
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpFormGetTo  Razor API
+
+	
+	-same as DynamicWebViewPage<dynamic>.HttpFormPostTo
+	----------------------------------------------------------------------------------------------
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.HttpsFormGetTo  Razor API
+
+	
+	-same as DynamicWebViewPage<dynamic>.HttpsFormPostTo
+	----------------------------------------------------------------------------------------------
+
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.SubmitButtonFor   Razor API
+
+	Example demonstrating complete API:
+	----------------------------------------------------------------------------------------------
+
+	@using(FormPostTo.account_create){ 
+		@Html.AntiForgeryToken() 		
+		@TextBoxFor.username
+		
+		
+		//generate <input name="account_create" value="account_create" type="text" />
+		@SubmitButton.account_create
+		@SubmitButton.account_create()
+		@SubmitButton.account_create("Go")
+		@SubmitButton.account_create(new {@class = "cssClass"})
+		@SubmitButton.account_create("Go",new {@class = "cssClass"})
+	}
+      
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.TextBoxFor   Razor API
+	
+	TextBoxFor property name maps to parameter of same name for the action that the form posts to
+
+	Example demonstrating complete API:
+	----------------------------------------------------------------------------------------------
+
+
+	@using(FormPostTo.account_create){ 
+		@Html.AntiForgeryToken() 
+		
+		@TextBoxFor.username
+		@TextBoxFor.username()
+		@TextBoxFor.username("areg")
+		@TextBoxFor.username(new {@class = "cssClass"})
+		@TextBoxFor.username("areg",new {@class = "cssClass"})
+		
+		@SubmitButtonFor.account_create("Go")
+	}
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.TextAreaFor   Razor API
+
+	
+	TextAreaFor property name maps to parameter of same name for the action that the form posts to
+
+	Example demonstrating complete API:
+	----------------------------------------------------------------------------------------------
+
+
+	@using(FormPostTo.account_create){ 
+		@Html.AntiForgeryToken() 
+		
+		@TextAreaFor.usernames
+		@TextAreaFor.usernames()
+		@TextAreaFor.usernames("areg, steve")
+		@TextAreaFor.usernames(new { rows = 10, cols = 50 })
+		@TextAreaFor.usernames("areg,steve", new { rows = 10, cols = 50 })
+		
+		@SubmitButtonFor.account_create("Go")
+	}
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.PasswordBoxFor   Razor API
+	
+	PasswordBoxFor property name maps to parameter of same name for the action that the form posts to
+
+	Example demonstrating complete API:
+	----------------------------------------------------------------------------------------------
+
+
+	@using(FormPostTo.account_create){ 
+		@Html.AntiForgeryToken() 
+		
+		@PasswordBoxFor.password
+		@PasswordBoxFor.password()
+		@PasswordBoxFor.password("password")
+		@PasswordBoxFor.password(new {@class = "cssClass"})
+		@PasswordBoxFor.password("password",new {@class = "cssClass"})
+		
+		@SubmitButtonFor.account_create("Go")
+	}
+
+
+
+	----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.CheckboxFor   Razor API
+	
+	CheckboxFor property name maps to parameter of same name for the action that the form posts to
+
+	Example demonstrating complete API:
+	----------------------------------------------------------------------------------------------
+
+
+
+
+	@using(FormPostTo.account_create){ 
+		@Html.AntiForgeryToken() 
+		
+		@CheckboxFor.persist
+		@CheckboxFor.persist()
+		@CheckboxFor.persist(true)
+		@CheckboxFor.persist(new {id = "cssId"})
+		@CheckboxFor.persist(true,new {id = "cssId"})
+		
+		@SubmitButtonFor.account_create("Go")
+	}
+
+         
+         
+    ----------------------------------------------------------------------------------------------
+	DynamicWebViewPage<dynamic>.Content Razor API
+	
+	
+	----------------------------------------------------------------------------------------------
+
+	
+	@Content.Script("appscript")  
+	
+	in dev mode emits
+	==> <script src="http://baseappurl/Application/Content/Javascripts/appscript.js?timestamp" type="text/javascript"></script>
+	combined mode emits empty HtmlString
+	
+				---------------------------------------------------	  
+	@Content.Css("appstyle")
+	
+	in dev mode emits
+	==><link href="http://baseappurl/Application/Content/Stylesheets/appstyle.css?timestamp" rel="stylesheet" type=""text/css" />
+	in combined mode emits empty HtmlString
+	
+	
+	---------------------------------------------------
+	@Content.CombinedScript()
+	
+	in dev mode emits empty HtmlString
+	
+	in combined mode emits 
+	
+	==><script src="http://baseappurl/Application/Content/Javascripts/application_combinedfilehash.js" type="text/javascript"></script>
+	
+	----------------------------------------------------
+	@Content.CombinedCss()
+	
+	in dev mode emits empty HtmlString
+	
+	in combined mode emits 
+	
+	==><link href="http://baseappurl/Application/Content/Stylesheets/application_combinedfilehash.css" rel="stylesheet" type=""text/css" />
+	
+	----------------------------------------------------
+	@Content.ViewScript("home_index")
+	
+	//this is where View specific javascript goes
+	
+	in dev  mode emits
+	==><script src="http://baseappurl/Application/Content/Javascripts/home_index.js?timestamp" type="text/javascript"></script>
+	in combined mode emits 
+	==><script src="http://baseappurl/Application/Content/Javascripts/home_index_filehash.js" type="text/javascript"></script>
+		
+		
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 3
+
+DynamicController 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+	public class DynamicController : Controller
+    {
+		//redirection using route name
+        public dynamic RedirectTo { get; set; }
+        public dynamic HttpRedirectTo { get; set; }
+        public dynamic HttpsRedirectTo { get; set; }
+
+		//These are good for absolute url generation, for passing to mailers, in an action method
+        public dynamic HttpUrlFor { get; set; }
+        public dynamic HttpsUrlFor { get; set; }
+
+		//This is good to replace use of primitive types as action method form post parameters 
+		//when the number of parameters is large
+		public dynamic ToDynamic(FormCollection coll)
+	}
+
+
+
+	You can derive your controller classes from DynamicController as shown below:
+	
+	public class YourController : DynamicController{...}
+
+	Upon initialization, DynamicController creates the following ViewBag property assigning an empty error message container:
+
+	ViewBag.Errors = new ValidationErrors();
+
+
+	The API for the HttpUrlFor and HttpsUrlFor  properties of  DynamicController is the same as 
+	the API for those same properties on DynamicWebViewPage<dynamic>
+	
+	----------------------------------------------------------------------------------------------
+	
+	An example controller showing the method signatures of the DynamicController properties
+	The Index action shows the Url generation API and the About action shows the redirection API
+	
+    ----------------------------------------------------------------------------------------------
+      
+		public class HomeController : DynamicController
+		{
+		
+			public ActionResult Index()
+			{
+				
+				//Url generation within controller action
+				
+				string confirmlink = HttpUrlFor.account_confirm;
+				
+				//The complete API
+				//confirmlink = HttpUrlFor.account_confirm;
+				//confirmlink = HttpUrlFor.account_confirm();
+				//confirmlink = HttpUrlFor.account_confirm("one"));
+				//confirmlink = HttpUrlFor.account_confirm(1));
+				//confirmlink = HttpUrlFor.account_confirm(new {id = 1}));
+				//confirmlink = HttpUrlFor.account_confirm(new {id = 1,num="one"}));
+				
+				//confirmlink = HttpsUrlFor.account_confirm;
+				//confirmlink = HttpsUrlFor.account_confirm());
+				//confirmlink = HttpsUrlFor.account_confirm("one"));
+				//confirmlink = HttpsUrlFor.account_confirm(1));
+				//confirmlink = HttpsUrlFor.account_confirm(new {id = 1}));
+				//confirmlink = HttpsUrlFor.account_confirm(new {id = 1,num="one"}));
+				
+				
+				Mailer.Send_Confirmation(confirmlink: confirmlink);
+		
+				return View();
+			}
+		
+			public ActionResult About()
+			{
+					//Redirection API
+					
+					return RedirectTo.home_index;
+					
+					//The complete API
+					//return RedirectTo.home_index;
+					//return RedirectTo.home_index("one");
+					//return RedirectTo.home_index(1);
+					//return RedirectTo.home_index(new {id = 1});
+					//return RedirectTo.home_index(new {id = 1,num="one"});	
+		
+					//return HttpRedirectTo.home_index;
+					//return HttpRedirectTo.home_index("one");
+					//return HttpRedirectTo.home_index(1);
+					//return HttpRedirectTo.home_index(new {id = 1});
+					//return HttpRedirectTo.home_index(new {id = 1,num="one"});
+		
+					//return HttpsRedirectTo.home_index;
+					//return HttpsRedirectTo.home_index("one");
+					//return HttpsRedirectTo.home_index(1);
+					//return HttpsRedirectTo.home_index(new {id = 1});
+					//return HttpsRedirectTo.home_index(new {id = 1,num="one"});
+	
+			}
+		}
+		
+		
+		
+	----------------------------------------------------------------------------------------------	
+	A second example controller showing the use of the ToDynamic() method
+	The first Create() action uses simple action parameter binding
+	The second one uses the FormCollection in conjunction with ToDynamic()  
+    ----------------------------------------------------------------------------------------------
+
+	//DynamicController.ToDynamic
+	//also available a an extension method on FormCollection
+	public dynamic ToDynamic(FormCollection coll)
+	 
+	public class AccountController : DynamicController
+	{
+		[HttpPost][ValidateAntiForgery]
+		public ActionResult Create(string name, string email)
+		{
+			//uses simple data type binding to action method
+			new User.Register(name,email);
+			
+			return RedirectTo.home_index;
+		}
+		
+		[HttpPost][ValidateAntiForgery]
+		public ActionResult Create(FormCollection form)
+		{
+			//uses the ToDynamic() method to bind the form collection
+			dynamic user = ToDynamic(form);
+			
+			//alternate method using extension method on FormCollection
+			//user = form.ToDynamic();
+	
+			//the name key in FormCollection is mapped to user.name string property on the dynamic and the value for that key is set to the property
+			new User.Register(user.name,user.email)
+
+			return RedirectTo.home_index;
+		}
+		
+	}
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 4
+
+SessionController
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+Sessioncontrolleradds some authentication, identity and cookie helpers:
+
+
+
+    public class SessionController : DynamicController
+    {
+        public dynamic CurrentUser { get; set; }
+        public string CurrentUserId { get; set; }
+        public bool IsAuthenticated { get; set; }
+
+
+		protected ActionResult RedirectToRouteOrReturnUrl(string routename, string returnUrl)   
+        protected ActionResult RedirectToRouteOrReturnUrl(string routename,object pars, string returnUrl) 
+   
+        public void SetAuthCookie(string key, bool keepsignedin = false)      
+        public void RemoveAuthCookie()      
+        public bool HasRequestCookie(string cookieName)      
+        protected HttpCookie GetRequestCookie(string cookieName)
+        protected string GetRequestCookieValue(string cookieName) 
+        protected void SetResponseCookie(string name, string value)     
+        protected void SetResponseCookie(HttpCookie cookie)     
+        protected void RemoveBrowserCookie(string cookieName)      
+        protected HttpCookie CreateNewCookie(string name, string value)
+     }
+     
+     
+    Upon initialization,  SessionController  creates the following ViewBag properties:
+	   
+	ViewBag.IsAuthenticated;
+	ViewBag.SigninErrorMessage;
+	ViewBag.CurrentUserName;
+	
+    -------------------------------------------------------------------------------------------------------
+    Special comsiderations when deriving from  SessionController instead of directly from DynamicController
+    Note: feel free to remove or modify this logic to suit your needs.
+    -------------------------------------------------------------------------------------------------------
+   
+	Sessioncontroller  assumes there exists a public class named User with the followimg public method:
+	
+	public class User
+	{
+		public dynamic Get(string userId)
+	}
+	
+	
+	It also assumes that the Get() method of the User class returns a dynamic object with a property named: first_name
+	The  SessionControllers internal call uses the result of the Get() method as  shown below:
+	   
+	CurrentUser = new User().Get(CurrentUserId);
+	ViewBag.CurrentUserName = CurrentUser.first_name;
+	
+	
+	
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 5
+
+DynamicEntity
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+	==============================================================================================
+	DynamicEntity class
+	==============================================================================================
+	
+	public class DynamicEntity
+	{
+	
+  	
+        public static string GenerateGuidString() { return Guid.NewGuid().ToString();  }
+ 
+        public string SqlScript { get; private set; }
+
+		//---------------------------------------------
+		//EntityQuery object exposed through the current DynamicEntity
+		//Note: This objects API will be presented below for a wide range of dynamic queries
+		//
+		
+		public EntityQuery Query{ get;}
+
+
+		//---------------------------------------------
+		//Query inspection API
+		//
+		
+	
+		//parametrized generated sql script - example: select email from dbo.Users where name=@0  
+		string SqlScript;
+		
+		//list of parameters - note: the sequence of values match the sequence of @0 to @n parametrized parameters in the generated script
+		List<object> SqlScriptParams;
+		
+
+		//script only for logging purposes. - : select email from dbo.Users where name="areg"   
+		string SqlScriptMergedWithParams;
+
+		//--------------------------------------------
+		//DynamicEntity object query by primary key API
+		//
+		
+		
+		public dynamic Single(int key, string columns = "*")
+	
+		public List<dynamic> Multiple(params int[] keys)
+       
+        public List<dynamic> Multiple(string columns, params int[] keys)
+
+		//----------------------------------------------
+		//insert api
+		//
+		
+		//example: Insert(new{age=40,name="areg"});
+		public int Insert(object inputs)
+
+ 
+
+		//
+		//update api
+		//
+
+		public int UpdateProperties(object propertyNameValues, int id)
+       
+		public int UpdateProperties(object updateProperties, object filterProperties)
+		
+        public int UpdatePropertiesMultiple(object updateProperties, params int[] keys)
+ 
+		public int UpdatePropertiesWhere(object updateProperties, string where, params object[] filterProperties)
+      
+
+		//
+		//delete api
+		//
+		
+		public int Delete(object filterProperties)
+  
+		public int Delete(int id)
+		
+		public int DeleteMultiple(params int[] keys)
+		
+		public int DeleteWhere(string where, params object[] filterProperties)
+
+
+		//
+		//increment/decrement column value API
+		//
+       
+      	public int IncrementBy(string columnName, int id, int incrementAmount)
+           
+		public int Increment(string columnName, object filterProperties)
+      
+        public int Decrement(string columnName, object filterProperties)
+        
+        public int IncrementBy(string columnName, object filterProperties, int incrementAmount)
+       
+        public int Increment(string columnName, int id)
+      
+        public int Decrement(string columnName, int id)
+       
+        public int Increment(string columnName, string where, params object[] filterProperties)
+       
+        public int Decrement(string columnName, string where, params object[] filterProperties)
+
+        public int IncrementByWhere(string columnName, int incrementAmount, string where, params object[] filterProperties)
+       
+
+
+		//
+		//count Query API
+		//
+		
+		public int Count()
+
+        public long CountLong()
+       
+        public int Count(object filterProperties)      
+
+        public int CountWhere(string where, params object[] filterProperties)
+       
+     
+ 
+		//
+		//aggregate Max/Min/Sum API
+		//
+ 
+		public int MaxId()
+      
+        public int Max(string column)
+       
+        public int Max(string column, object filterProperties)
+      
+        public int MaxWhere(string column, string where, params object[] filterProperties)
+ 
+        public int MinId()
+    
+        public int Min(string column)
+      
+        public int Min(string column, object filterProperties)
+        
+        public int MinWhere(string column, string where, params object[] filterProperties)
+ 
+        public int Sum(string column)
+      
+        public int Sum(string column, object filterProperties)
+     
+        public int SumWhere(string column, string where, params object[] filterProperties)
+        
+
+		//
+		//ad hoc sql api
+		//
+		
+		public int ExecuteScalar(string script, params object[] parameters)   
+
+        public int ExecuteNonQuery(string script, params object[] parameters)
+      
+        public List<dynamic> ExecuteQuery(string script, params object[] parameters)
+   
+        public dynamic ExecuteQuerySingle(string script, params object[] parameters)
+      
+       
+       
+	}
+	
+	
+	
+	==============================================================================================
+	Entity Setup
+	==============================================================================================
+	
+	
+	//derive your entity and add required and optional constructor and initialization code
+	public class YourEntity : DynamicEntity
+	{
+		//required constructor
+		public YourEntity()
+		{
+			Init();
+
+			//standard framework Repository (opens connection before each access call and closes connection after each access call)
+			_db = new Repository(ConnectionStrings.YourDb);
+		}
+
+		//optional constructor for transactional operations
+		public YourEntity(TransactionScope transaction)
+		{
+			Init();
+
+			//transactional framework Repository(maintains an open transaction between access calls)
+			_db = new TransactionalRepository(ConnectionStrings.YourDb, transaction);
+		}
+
+		//optional constructor for operations that share a connection
+		public YourEntity(DbConnection connection)
+		{
+			Init();
+
+			//persistant connection framework Repository(maintains an open connection between access calls)
+			_db = new ConnectedRepository(ConnectionStrings.YourDb, connection);
+		}
+
+		//required and optional initializations go in here
+		private void Init()
+		{
+				   
+			//required table name
+			_table = "dbo.entity";
+	
+			//required primary key name
+			_pkid = "entity_id";
+	
+			//required enable/disable execution(allows disabling for inspecting queries)
+			this.EnableSqlExecution = true;
+	
+	
+	
+			//optional timeout in seconds for database command execution
+			this.CommandTimeout = 10;
+		   
+			//optional white list for insert operation
+			this.SetInsertableColumns("col1","col2");
+	
+			//optional white list for update operation
+			this.SetUpdateableColumns("col1","col2");
+	
+			//optional white list for select operation
+			this.SetSelectableColumns("col1","col2");
+	
+			//optional: defaults for insert operation
+			this.SetDefaultValues(new{col1 = somedefaultvalue, col2 = DefaultDate });
+	
+			//Note: The DefaultDate datetime is defined in base class as: protected static DateTime DefaultDate { get { return DateTime.Parse("1/1/2000"); } })
+			//to set default datetime as current datetime it must be defined as a database default constraint, or alternatively you can make it non default 
+			//and pass the Time.Current property, of the frameworks Time class, as the currnet datetime on insert. 
+			//You could also use SetDefaultValues and Time.Current to set the default datetime value at object construction time or pre insert call but realize if the insert does not happen
+			//immedietly after setting the default, the time will be stale when the insert occures.
+					
+		}
+	
+	}
+		
+		
+	Example of a minimum entity setup:
+	
+	public class YourMinimumEntity : DynamicEntity
+	{
+		public YourMinimumEntity()
+		{
+			Init();
+			
+			_db = new Repository(ConnectionStrings.YourDb);
+		}
+		
+		private void Init()
+		{
+			_table = "dbo.entity";
+	
+			_pkid = "entity_id";
+	
+			this.EnableSqlExecution = true;
+	
+		}
+	}
+		
+	
+	==============================================================================================
+	DynamicEntity CRUD examples:
+	==============================================================================================
+	
+	//first create a new entity instance
+
+	User u = new User();
+
+
+	//------------------------------------------------------------------------
+	//object access api examples
+	
+	//return user id = 2 with all selectable columns as properties (or all columns if no selectable white list specified) 
+	dynamic user = u.Single(2, string columns = "*")
+	
+	//return columns email and name for user with id=2 (if selectable white list is specified, they will be in result onlt if in the list)
+	dynamic user = u.Single(2, "email,name")
+	
+	//return 3 users with ids 2,3,7 with all selectable columns as properties
+	List<dynamic> users = u.Multiple(2,3,7)
+		   
+	//return 3 users with ids 2,3,7 with "email,name" properties if selectable
+	List<dynamic> users = u.Multiple("email,name", 2,3,7)
+	
+	
+	//------------------------------------------------------------------------
+	//Insert api examples
+	
+	int insertedId = u.Insert(new{email="areg@emails.com",name="areg"});
+	
+	
+	
+	
+	//------------------------------------------------------------------------
+	//update api examples
+	
+	
+	//Note: first parameter is always the properties to be updated, additional parameters are where filters
+	
+	//update the name and email properties of user where user id = 2
+	int effectedRows = u.UpdateProperties(new{email="areg@emails.com",name="areg"}, 2);
+	
+	int effectedRows = u.UpdatePropertiesMultiple(new{email="areg@emails.com",name="areg"}, 2,3,7)
+	 
+	int effectedRows = u.UpdateProperties(new{email="areg@emails.com",name="areg"}, new{userid = 2})
+	
+	int effectedRows = u.UpdateProperties(new{email="areg@emails.com"}, new{name="areg"})
+	
+	int effectedRows = u.UpdateProperties(new{email="areg@emails.com"}, new{name="areg",verified = true})
+	
+	int effectedRows = u.UpdatePropertiesWhere(new{email="areg@emails.com"}, "name=@0", "areg")
+	 
+	int effectedRows = u.UpdatePropertiesWhere(new{email="areg@emails.com"}, "name=@0 and verified=@1", "areg",true)	 
+	
+	//Update All rows example
+	//note: update all needs a null parameter to make it a bit harder to forget the filter parameter and update the entire table
+	int effectedRows = u.UpdateProperties(new{email="areg@emails.com",name="areg"}, null)
+	
+	
+	
+	//------------------------------------------------------------------------
+	//delete api examples
+	
+	
+	//delete user id = 2
+	int effectedRows = u.Delete(2)
+	
+	int effectedRows = u.DeleteMultiple(2,3,7)
+	
+	int effectedRows = u.Delete(new{name="areg",verified = true});
+	
+	int effectedRows = u.DeleteWhere("name=@0", "areg");
+	
+	//delete all needs a null parameter to make it a bit harder to forget a parameter and delete the entire table
+	int effectedRows = u.Delete(null)
+	
+	
+	
+	
+	//------------------------------------------------------------------------
+	//accumulate/increment/decrement column value API examples
+		   
+	//all three versions below execute the same query increment login_count column for user id = 2 by five
+	int effectedRows = u.IncrementBy("login_count", 2, 5)
+	int effectedRows = u.IncrementBy("login_count", new{userid = 2}, 5)
+	int effectedRows = u.IncrementBy("login_count",  5, "userid = @0",2)   
+	   
+	//increment ammount of one
+	int effectedRows = u.IncrementBy("login_count", 2, 1)
+	int effectedRows = u.IncrementBy("login_count", new{userid = 2}, 1)
+	int effectedRows = u.IncrementBy("login_count",  1, "userid = @0",2)   
+	   
+	//implicit increment amount of one 
+	int effectedRows = u.Increment("login_count", 2)   
+	int effectedRows = u.Increment("login_count", new{userid = 2})
+	int effectedRows = u.Increment("login_count", "userid = @0",2)
+	 
+	//increment ammount of minus one
+	int effectedRows = u.IncrementBy("login_count", 2, -1)
+	int effectedRows = u.IncrementBy("login_count", new{userid = 2}, -1)
+	int effectedRows = u.IncrementBy("login_count",  -1, "userid = @0",2)        
+	
+	//implicit increment ammount of minus one
+	int effectedRows = u.Decrement("login_count", 2)   
+	int effectedRows = u.Decrement("login_count", new{userid = 2})
+	int effectedRows = u.Decrement("login_count", "userid = @0",2)
+
+	
+	//------------------------------------------------------------------------
+	//count Query API examples
+	
+	//count all
+	int count = u.Count()      
+	
+	//filtered count 
+	int count = u.Count(new{name = "areg"})      
+	int count = u.CountWhere("name=@0" ,"areg")      
+	
+
+	//count all distinct rows
+	int count = u.CountDistinct()   
+	
+	//count distinct filtered   
+	int count = u.CountDistinct(new{name = "areg"})      
+	int count = u.CountWhereDistinct("name=@0" ,"areg")
+		 
+	 
+	//------------------------------------------------------------------------
+	//aggregate Max/Min/Sum API examples
+	 
+	int maxid = u.MaxId()
+		  
+	int maxval = u.Max("login_count")
+		   
+	int maxval = u.Max("login_count", new{name="areg"})		  
+	
+	int maxval = u.MaxWhere("login_count", "name=@0","areg")
+		   	
+	
+	int minid = u.MinId()
+	
+	int minval = u.Min("login_count")
+		  	
+	int minval = u.Min("login_count",  new{name="areg"})		
+	
+	int minval = u.MinWhere("login_count", "name=@0","areg")
+				
+	
+	int sumval = u.Sum("order_item_count")
+		  	
+	int sumval = u.Sum("order_item_count",  new{name="areg"})
+		 	
+	int sumval = u.SumWhere("order_item_count", "name=@0","areg")
+			
+	
+	//------------------------------------------------------------------------
+	//ad hoc sql api examples
+	
+	int scalarvalue = u.ExecuteScalar(string parametrizedSqlScript, params object[] parameterValues)
+		 
+	long scalarvalue = u.ExecuteScalarLong(string parametrizedSqlScript, params object[] parameterValues)
+	  
+	int effectedRows = u.ExecuteNonQuery(string parametrizedSqlScript, params object[] parameterValues)
+		  
+	List<dynamic> results = u.ExecuteQuery(string parametrizedSqlScript, params object[] parameterValues)
+	   
+	dynamic singleresult = u.ExecuteQuerySingle(string parametrizedSqlScript, params object[] parameterValues)
+	
+	
+	==============================================================================================
+	DynamicEntity Transactions and shared connections API examples:
+	Note: examples only show a few API methods, however all api methods work with transactions and shared connections
+	==============================================================================================
+	
+
+	//perform two inserts and one update all within the same transaction
+	using(TransactionScope transaction = new TransactionScope())
+	{	
+		User u = new User(transaction)
+	
+		int id = u.insert(new{name="areg"});
+		
+		id = u.insert(new{name="john"});
+		
+		u.update(new{name="aregs"},id);	
+	}
+	
+	
+	
+	//open a connection, perform two inserts and one update all using the same connection then close the connection
+	using(DbConnection connection = new DbConnection())
+	{	
+		User u = new User(connection)
+	
+		int id = u.insert(new{name="areg"});
+		
+		id = u.insert(new{name="john"});
+		
+		u.update(new{name="aregs"},id);
+	}
+	
+	
+	
+	//perform inserts and  updates into multiple entities all within the same transaction
+	using(TransactionScope transaction = new TransactionScope())
+	{
+		User u = new User(transaction)
+	
+		Order o = new Order(transaction)
+	
+		int id = u.insert(new{name="areg"});
+	
+		id = o.insert(new{desc="blue ball",userid=id});
+	
+		id = u.insert(new{name="john"});
+	
+		id = o.insert(new{desc="red ball",userid=id});
+	
+		o.update(new{desc="green ball"},id);
+	}
+	
+	
+	
+	//open a connection, perform two inserts and one update all using the same connection then close the connection
+	using(DbConnection connection = new DbConnection())
+	{
+		User u = new User(connection)
+	
+		Order o = new Order(connection)
+	
+		int id = u.insert(new{name="areg"});
+	
+		id = o.insert(new{desc="blue ball",userid=id});
+	
+		id = u.insert(new{name="john"});
+	
+		id = o.insert(new{desc="red ball",userid=id});
+	
+		o.update(new{desc="green ball"},id);	
+	}
+		
+		
+		   
+	//add an order for a user and increment the users order count
+	using(TransactionScope transaction = new TransactionScope())
+	{	
+		User u = new User(connection)
+	
+		Order o = new Order(connection)
+	
+		int uid = u.insert(new{name="areg"});
+	
+		int oid = o.insert(new{desc="blue ball",userid=uid});
+		
+		u.increment("order_count",uid);
+	}
+	
+	
+	
+	//add an order for a user and increment the users order count then delete the order and decrement the users order count
+	using(TransactionScope transaction = new TransactionScope())
+	{
+		User u = new User(connection)
+	
+		Order o = new Order(connection)
+	
+		int uid = u.insert(new{name="areg"});
+	
+		int oid = o.insert(new{desc="blue ball",userid=uid});
+		
+		u.increment("order_count",uid);
+		
+		o.delete(oid);
+	
+		u.deccrement("order_count",uid);
+	}
+
+	
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 6
+
+EntityQuery
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	//this class (exposed through a DynamicEntity instance) provides a dynamic object query API 
+	//properties of the dynamic object result(s) are the select fields which unless explicitly specified are select *
+	//or if a white list is specified then: select selectable_table_column
+	public class EntityQuery
+	{
+		//------------------------------------------------------
+		//Chainable Query builder api
+		//
+		//note: returns EntityQuery to allow chanining
+
+		public EntityQuery SelectPrimarykey()
+
+        public EntityQuery Select(string columns)     
+
+        public EntityQuery Join(string join)
+      
+        public EntityQuery OrderBy(string orderBy)
+      
+        public EntityQuery GroupBy(string groupBy)
+      
+        public EntityQuery Where(string where, params object[] filterProperties)
+        
+        public EntityQuery Where(object filterProperties)
+       
+
+		//------------------------------------------------------
+		//Query execution api 
+		//
+		//note: must be called  as the last link on the query builder chain to execute the query and return results
+		//calling these methods without using the query builder methods will just do a select query without any other conditions
+		
+		//
+        //regular queries
+        //
+        
+        public List<dynamic> GetAll()    
+
+        public List<dynamic> GetAllDistinct()
+       
+        public List<dynamic> GetTop(int limit)    
+
+        public List<dynamic> GetTopDistinct(int limit)
+        
+        
+        //
+        //Paged and Range queries
+        //
+       
+        public List<dynamic> GetPage(int page, int size = 10)     
+
+        public List<dynamic> GetPageDistinct(int page, int size = 10)
+       
+        public List<dynamic> GetRange(int offset, int limit = 10)
+    
+        public List<dynamic> GetRangeDistinct(int offset, int limit = 10)
+    
+		//
+        //count queries
+        //
+        
+        public int Count()
+       
+        public int CountDistinct()
+       
+        public int CountDistinct(string column)
+    
+    
+		//
+        //aggregate queries
+        //
+        
+        public int Max(string column)
+     
+        public int Min(string column)
+    
+        public int Sum(string column)
+    
+	}
+
+
+
+	//=========================================================================
+	EntityQuery query examples:
+	//=========================================================================
+	
+	
+	//-------------------------------------------------------------------------
+	//Query object Access
+	
+	User u = new User();
+	
+	EntityQuery query = u.Query;
+	
+	//-------------------------------------------------------------------------
+	//Query inspection API
+	  
+	//eg: select email from dbo.Users where name=@0  
+	string generatedParametizedScript = query.SqlScript;
+	
+	//note: the sequence of values match the sequence of @0 to @n parametrized parameters in the generated script
+	List<object> parameterValues = query.SqlScriptParams;
+	
+	//eg: select email from dbo.Users where name="areg"   
+	string generatedScriptWithParameterValuesMergedintoParameters = query.SqlScriptMergedWithParams;
+	
+	//=========================================================================
+	//Query execution API
+	//=========================================================================
+	
+	//executes a select query
+	List<dynamic> users = query.GetAll();
+	
+	//executes a select distinct query
+	List<dynamic> users = query.GetAllDistinct();
+	
+	//executes a select top 100 query
+	List<dynamic> users = query.GetTop(100);
+	
+	//executes a select distinct top 100 query
+	List<dynamic> users = query.GetTopDistinct(100);
+	
+	//executes a select query returning rows 50 to 100 
+	List<dynamic> users = query.GetRange(50,100);
+	
+	//executes a select distinct query returning rows 50 to 100 
+	List<dynamic> users = query.GetRangeDistinct(50,100);
+	
+	//executes a select query returning rows 50 to 100 
+	List<dynamic> users = query.GetPage(2,50);
+	
+	//executes a select distinct query returning rows 50 to 100 
+	List<dynamic> users = query.GetPageDistinct(2,50);
+	
+	//executes a select count(*) query
+	int count = query.Count();
+	
+	//executes a select distinct count(*) query
+	int count = query.CountDistinct();
+	
+	//executes a select distinct count("col1") query
+	int count = query.CountDistinct("col1");
+	
+	//executes a select distinct max("col1") query
+	int count = query.Max("col1");
+	
+	//executes a select distinct min("col1") query
+	int count = query.Min("col1");
+	
+	//executes a select distinct sum("col1") query
+	int count = query.Sum("col1");
+	
+	
+	//===============================================================================================================
+	//Query Builder API 
+	//Note: the query builder methods select(), where(),OrderBy(),GroupBy() and Join() methods are independent
+	//and can go in any order before the Query execution method which must be the last method in the chain.
+	//If no query builder method is specified the default query is the pseuedo query: "select <query execution option> * from <tablename>"
+	//===============================================================================================================
+	
+	//queries with a "Where" filter
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetAll();
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetAllDistinct();
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetTop(100);
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetTopDistinct();
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetPage(2,50);
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetPageDistinct(2,50);
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetRange(50,100);
+	List<dynamic> users = query.Where(new{col1 = 10,col2="a"}).GetRangeDistinct(50,100);
+	
+	
+	int count = query.Where(new{col1 = 10,col2="a"}).Count();
+	int count = query.Where(new{col1 = 10,col2="a"}).CountDistinct();
+	int count = query.Where(new{col1 = 10,col2="a"}).CountDistinct("col1");
+	int count = query.Where(new{col1 = 10,col2="a"}).Max("col1");
+	int count = query.Where(new{col1 = 10,col2="a"}).Min("col1");
+	int count = query.Where(new{col1 = 10,col2="a"}).Sum("col1");
+	
+	//queries with an adhoc "Where" filter
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetAll();
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetAllDistinct();
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetTop(100);
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetTopDistinct();
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetPage(2,50);
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetPageDistinct(2,50);
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetRange(50,100);
+	List<dynamic> users = query.Where("col1 > @0 and col2 = @1",10,"a").GetRangeDistinct(50,100);
+	
+	
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").Count();
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").CountDistinct();
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").CountDistinct("col1");
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").Max("col1");
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").Min("col1");
+	int count = query.Where("col1 > @0 and col2 = @1",10,"a").Sum("col1");
+	
+	
+	//queries with specific columns specified for the select statement
+	List<dynamic> users = query.Select("col1,col2").GetAll();
+	List<dynamic> users = query.Select("col1,col2").GetAllDistinct();
+	List<dynamic> users = query.Select("col1,col2").GetTop(100);
+	List<dynamic> users = query.Select("col1,col2").GetTopDistinct();
+	List<dynamic> users = query.Select("col1,col2").GetPage(2,50);
+	List<dynamic> users = query.Select("col1,col2").GetPageDistinct(2,50);
+	List<dynamic> users = query.Select("col1,col2").GetRange(50,100);
+	List<dynamic> users = query.Select("col1,col2").GetRangeDistinct(50,100);
+	
+	
+	//queries with order by columns specified
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetAll();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetAllDistinct();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetTop(100);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetTopDistinct();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetPage(2,50);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetPageDistinct(2,50);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetRange(50,100);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").GetRangeDistinct(50,100);
+	
+	
+	//queries with order by columns and where filter specified (adhoc where filter could be specified instead)
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetAll();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetAllDistinct();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetTop(100);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetTopDistinct();
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetPage(2,50);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetPageDistinct(2,50);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetRange(50,100);
+	List<dynamic> users = query.OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetRangeDistinct(50,100);
+	
+	//queries with specific selected columns and where filter specified (adhoc where filter could be specified instead)
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetAll();
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetAllDistinct();
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetTop(100);
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetTopDistinct();
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetPage(2,50);
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetPageDistinct(2,50);
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetRange(50,100);
+	List<dynamic> users = query.Select("col1,col2").Where(new{col1 = 10,col2="a"}).GetRangeDistinct(50,100);
+	
+	//queries with specific selected columns, order by columns and where filter specified (adhoc where filter could be specified instead)
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetAll();
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetAllDistinct();
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetTop(100);
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetTopDistinct();
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetPage(2,50);
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetPageDistinct(2,50);
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetRange(50,100);
+	List<dynamic> users = query.Select("col1,col2").OrderBy("col1, col2 desc").Where(new{col1 = 10,col2="a"}).GetRangeDistinct(50,100);
+	
+	//GroupBy examples
+	List<dynamic> users = query.Select("count(1) as uc,col1,col2").Where(new{col1 = 10,col2="a"}).GroupBy("col1,col2").GetAll();
+	List<dynamic> users = query.Select("count(1) as uc,col1,col2").Where(new{col1 = 10,col2="a"}).GroupBy("col1,col2 having count(1) > 1").GetAll();
+	
+	//JOIN examples
+	List<dynamic> users = query.Select("col1,col2").Join("u inner join dbo.accounts a on u.userid = a.userid").OrderBy("u.col1, u.col2 desc").Where(new {col1 = 10 and col2 = "a"}).GetAll();
+	List<dynamic> users = query.Select("col1,col2").Join("u inner join dbo.accounts a on u.userid = a.userid").OrderBy("u.col1, u.col2 desc").Where("u.col1 > @0 and u.col2 = @1",10,"a").GetAll();
+	List<dynamic> users = query.Select("col1,col2").Join("u left join dbo.accounts a on u.userid = a.userid").OrderBy("u.col1, u.col2 desc").Where("u.col1 > @0 and a.col3 is not null",10).GetAll();
+	
+	//JOIN examples using the fully qualified table names
+	List<dynamic> users = query.Select("col1,col2").Join("inner join dbo.accounts a on dbo.Users.userid = dbo.accounts.userid").OrderBy("dbo.Users.col1, dbo.Users.col2 desc").Where(new {col1 = 10 and col2 = "a"}).GetAll();
+	List<dynamic> users = query.Select("col1,col2").Join("inner join dbo.accounts a on dbo.Users.userid = dbo.accounts.userid").OrderBy("dbo.Users.col1, dbo.Users.col2 desc").Where("dbo.Users.col1 > @0 and dbo.Users.col2 = @1",10,"a").GetAll();
+	List<dynamic> users = query.Select("col1,col2").Join("left join dbo.accounts on dbo.Users.userid = dbo.accounts.userid").OrderBy("dbo.Users.col1, dbo.Users.col2 desc").Where("dbo.Users.col1 > @0 and dbo.accounts.col3 is not null",10).GetAll();
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 7
+
+Validation and Validation Errors 
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+	//------------------------------------------------------------------------
+	//ValidationErrors API
+	//------------------------------------------------------------------------
+
+	///This class is a error container utility that can be used to hold property validation and busniess rule validation 
+	//error messages. It has a number of methods that can be usefull when displaying error information in Views
+
+	//note:each key can have multiple error messages associated with it
+	
+	public class ValidationErrors
+	{
+        public Dictionary<string, List<string>> Errors;
+
+        public void Add(string key, string error);
+       
+        public List<string> Keys;
+      
+        public bool Exist;
+      
+        public bool ExistFor(string key);
+        
+        public bool MoreThanOneExists;     
+
+        public bool MoreThanOneExistsFor(string key);      
+
+        public int Count;
+        
+        public int CountFor(string key);
+             
+        public List<string> ErrorMessages;    
+      
+        List<string> ErrorMessagesFor(string key);
+       
+        public List<KeyValuePair<string,string>> ErrorMessagePairs;     
+    }
+
+
+	//Every DynamicViewPage.ViewBag has an empty ValidationErrors container:
+	
+	//where:
+	//ViewBag.Errors = new ValidationErrors();
+	
+	//so that the view could contain code  without null checks to display errors if they exists like so:
+
+
+    @if (ViewBag.Errors.Exist)
+    { 
+        <p>There were errors. Please correct and submit again.</p>
+        <ul>
+        @foreach (string message in ViewBag.Errors.ErrorMessages)
+        { 
+          <li>@message</li>
+        }
+        </ul>
+    }
+
+	
+	//------------------------------------------------------------------------
+	//Validation API
+	//------------------------------------------------------------------------
+
+	
+	//Validator abstract base class
+	//single value validators implement the Validate() method of this class 
+	//and define their own constructor to set the message and key
+	public abstract class Validator
+    {
+		//this utility method can be used to check if checkbox is checked
+      	public static bool IsChecked(bool? check)
+
+        public string Key { get; set; }
+        
+        public string ErrorMessage { get; set; }
+
+        public abstract void Validate(string value,ValidationErrors errors);
+    }
+
+
+
+	//Example: derived validator
+	public class RequiredValidator : Validator
+    {
+		//this utility method can be used by all other validators to check the presense of a value and skipping validation if not present
+		public static bool IsPresent(string value);
+        
+        //use this constructor when creating a validator for inclusion ValidatorGroup 
+		public RequiredValidator(string errorMessage)
+		
+		//use this constructor for creating an indepenent validatort
+		public RequiredValidator(string key, string errorMessage)
+		
+		
+		public override void Validate(string value, ValidationErrors errors)     
+    }
+
+
+
+	//Validators that implement the Validator class:
+	class IsInRange: Validator{}
+	class IsInteger: Validator{}
+	class IsIntegerInRange:  Validator{}
+	class MaximumStringLengthValidator: Validator{}
+	class MinimumStringLengthValidator: Validator{}
+	class StringLengthRangeValidator: Validator{}
+	class RequiredValidator: Validator{}
+	class RegexValidator: Validator{}
+	class GuidStringValidator: Validator{}
+
+
+
+
+
+	//validators that do not derive from validator 
+	//The are individual validators that do not conform to the Validator.Validate() uniform validation interface
+	
+	class CompareValidator{}
+	class HashedValueValidator{}
+
+
+	//------------------------------------------------------------------------
+	//ValidatorGroup
+	//------------------------------------------------------------------------
+
+	//multiple validators that derive from the Validator class can be combined in a group using the same key
+
+	//here is the class definition for ValidatorGroup
+	
+	public class ValidatorGroup
+    {
+  
+		//add validators to the group setting the key for each validator as it is added to the group
+        public ValidatorGroup(string key, params Validator[] validators)
+       
+		//add validators that have their keys already set to the group 
+        public ValidatorGroup(params Validator[] validators)
+       
+        //calls Validate on each of the validators in the group validators to the group passing the errors container to each validator
+        public void Validate(string value, ValidationErrors errors)
+     
+    }
+
+
+	Here is an example of a factory method that gets a ValidatorGroup for email:
+
+	public class Validations
+	{
+	   public static ValidatorGroup Email = new ValidatorGroup("email"
+												,new RequiredValidator("email is required")
+												, new StringLengthRangeValidator(Ranges.MIN_EMAIL, Ranges.MAX_EMAIL, String.Format("email must be between {0} and {1} characters", Ranges.MIN_EMAIL, Ranges.MAX_EMAIL))
+												, new RegexValidator(RegexPatterns.EMAIL,"invalid email format")
+												);
+	
+	}  
+
+	//====================================================================================================================================
+	//examples of validator and validation errors usage inside DynamicEntity model classes
+	//====================================================================================================================================
+
+
+	public class User: DynamicEntity
+	{
+		public void Register(string name,string email)
+		{
+			dynamic result = new ExpandoObject();		
+						
+			ValidationErrors errors = new ValidationErrors();
+	
+			Validations.Email.Validate(email,errors);
+	
+			new MaximumStringLengthValidator(50,"name must be 50 characters or less").Validate(name,errors);
+	
+			result.Errors = errors;
+	
+			if(!error.Exist)
+			{
+				this.insert(new{name=name,email=email});
+			}
+			 
+			return result;
+		}	
+	}
+
+
+	//Below is a controller action that uses this models Register method 
+
+	public ActionResult Register(string name,string email)
+	{
+	
+		dynamic result = new User.Register(name,email);
+	
+		if(result.Errors.Exits)
+		{	
+			//override the defult empty error collection
+			ViewBag.Errors = result.Errors;
+			
+			//re-display the user registration form 
+			return View();
+		}
+	
+		return RedirectTo.home_index;
+	}
+
+	//Alternatively if the form has many inputs you can use a form collection:
+	public ActionResult Register(FormCollection form)
+	{
+		//use the DynamicController.ToDynamic(FormCollection) method to convert the form collection to a dynamic object
+		dynamic result = new User.Register(ToDynamic(form));
+	
+		if(result.Errors.Exits)
+		{	
+			//override the defult empty error collection
+			ViewBag.Errors = result.Errors;
+			
+			//re-display the user registration form 
+			return View();
+		}
+	
+		return RedirectTo.home_index;
+	}
+
+	//And the model interface change slightly to:
+	public void Register(dynamic registrationForm)
+	{
+		dynamic result = new ExpandoObject();
+		
+		ValidationErrors errors = new ValidationErrors();
+		
+		Validations.Email.Validate(registrationForm.email,errors);
+		
+		new MaximumStringLengthValidator(50,"name must be 50 characters or less").Validate(name,errors);
+	
+		result.Errors = errors;
+		
+		if(!error.Exist)
+		{
+			this.insert(new{name=registrationForm.name,email=registrationForm.email});
+		}
+		
+		return result;
+	}
+
+	//Finally here is the Registtration view that submits the to the Register() action:
+	
+	@if (!IsAuthenticated)
+	{
+		if (ViewBag.Errors.Exist)
+		{ 
+			<p>There were errors. Please correct and submit again.</p>
+			<ul>
+			@foreach (string message in ViewBag.Errors.ErrorMessages)
+			{ 
+			  <li>@message</li>
+			}
+			</ul>
+		}
+		using (FormPostTo.account_register)
+		{
+			@Html.AntiForgeryToken()
+			<fieldset>
+				<p>
+					<label for="name">name:</label><br />
+					@TextBoxFor.name
+				</p>
+				<p>
+					<label for="email">E-mail address:</label><br />
+					@TextBoxFor.email
+				</p>
+				<p>
+					@SubmitButtonFor.account_register("Register")
+				</p>
+			</fieldset>
+		}
+	}
+	else
+	{ 
+	
+		<h1>Welcome @ViewBag.CurrentUserName </h1>
+	}
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 8
+
+Database Migrations
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+	public abstract class Migration 
+    {
+        protected abstract Migration Up();
+
+        protected abstract Migration Down();  
+
+        public ITable CreateTable(string name)
+       
+        public IExistingTable AlterTable(string name)     
+
+        public void DropTable(string name)
+       
+        public void TruncateTable(string name)       
+    }
+
+
+
+	public interface ITable
+    {
+        IExistingTable WithPrimaryKey(string name, bool clustered = false);
+
+        IExistingTable WithPrimaryKeyDescending(string name, bool clustered = false);
+
+        IExistingTable WithoutPrimaryKey();
+
+        ITable WithInt32IdentityColumn(string name);
+
+        ITable WithInt32IdentityColumn(string name, int seed, int increment);
+
+        ITable WithInt64IdentityColumn(string name);
+
+        ITable WithInt64IdentityColumn(string name, int seed, int increment);
+
+        ITable WithInt16IdentityColumn(string name);
+
+        ITable WithInt16IdentityColumn(string name, int seed, int increment);
+
+        ITable WithGuidIdentityColumn(string name);
+
+        ITable WithInt32Column(string name);
+
+        ITable WithInt32ColumnNullable(string name);
+
+        ITable WithInt64Column(string name);
+
+        ITable WithInt64ColumnNullable(string name);
+
+        ITable WithInt16Column(string name);
+
+        ITable WithInt16ColumnNullable(string name);
+
+        ITable WithDateTimeColumn(string name);
+
+        ITable WithDateTimeColumnNullable(string name);
+
+        ITable WithBooleanColumn(string name);
+
+        ITable WithBooleanColumnNullable(string name);
+
+        ITable WithStringColumn(string name);
+
+        ITable WithStringColumnNullable(string name);
+
+        ITable WithStringColumn(string name, int maxLength);
+
+        ITable WithStringColumnNullable(string name, int maxLength);
+
+        ITable WithUnicodeStringColumn(string name);
+
+        ITable WithUnicodeStringColumnNullable(string name);
+
+        ITable WithUnicodeStringColumn(string name, int maxLength);
+
+        ITable WithUnicodeStringColumnNullable(string name, int maxLength);
+    }
+
+
+
+	public interface IExistingTable
+    {
+        IExistingTable RenameColumn(string name, string newName);
+        
+        IExistingTable DropColumn(string name);
+        
+        IExistingTable DropPrimaryKey(string name);
+        
+        IExistingTable DropIndexOn(string name);
+        
+        IExistingTable DropCompositeIndex(string namea, string nameb);
+        
+        IExistingTable DropForeignKey(string name, string foreignTableColumn);
+        
+        IExistingTable DropConstraint(string constraintName);
+        
+        IExistingTable AddInt32ColumnNullable(string name);
+        
+        IExistingTable AlterToInt32Column(string name, int defaultValue = 0);
+        
+        IExistingTable AlterToInt32ColumnNullable(string name);
+        
+        IExistingTable AddInt64ColumnNullable(string name);
+        
+        IExistingTable AlterToInt64Column(string name, int defaultValue = 0);
+        
+        IExistingTable AlterToInt64ColumnNullable(string name);
+        
+        IExistingTable AddInt16ColumnNullable(string name);
+        
+        IExistingTable AlterToInt16Column(string name, int defaultValue = 0);
+        
+        IExistingTable AlterToInt16ColumnNullable(string name);
+        
+        IExistingTable AddDateTimeColumnNullable(string name);
+        
+        IExistingTable AlterToDateTimeColumn(string name, string defaultValue = "getdate()");
+        
+        IExistingTable AlterToDateTimeColumnNullable(string name);
+        
+        IExistingTable AddBooleanColumnNullable(string name);
+        
+        IExistingTable AlterToBooleanColumn(string name, int defaultValue = 0);
+        
+        IExistingTable AlterToBooleanColumnNullable(string name);
+        
+        IExistingTable AddStringColumnNullable(string name);
+        
+        IExistingTable AlterToStringColumn(string name, string defaultValue = "''");
+        
+        IExistingTable AlterToStringColumnNullable(string name);
+        
+        IExistingTable AddStringColumnNullable(string name, int maxLength);
+        
+        IExistingTable AlterToStringColumn(string name, int maxLength, string defaultValue = "''");
+        
+        IExistingTable AlterToStringColumnNullable(string name, int maxLength);
+        
+        IExistingTable AddUnicodeStringColumnNullable(string name);
+        
+        IExistingTable AlterToUnicodeStringColumn(string name, string defaultValue = "''");
+        
+        IExistingTable AlterToUnicodeStringColumnNullable(string name);
+        
+        IExistingTable AddUnicodeStringColumnNullable(string name, int maxLength);
+        
+        IExistingTable AlterToUnicodeStringColumn(string name, int maxLength, string defaultValue = "''");
+        
+        IExistingTable AlterToUnicodeStringColumnNullable(string name, int maxLength);
+        
+        IExistingTable AddIndexOn(string name, bool clustered = false);
+        
+        IExistingTable AddIndexOnDescending(string name, bool clustered = false);
+        
+        IExistingTable AddUniqueIndexOn(string name, bool clustered = false);
+        
+        IExistingTable AddUniqueIndexOnDescending(string name, bool clustered = false);
+        
+        IExistingTable AddCompositeUniqueIndex(string namea_optionaldesc, string nameb_optionaldesc, bool clustered = false);
+        
+        IExistingTable AddPrimaryKey(string name, bool clustered = true);
+        
+        IExistingTable AddPrimaryKeyDescending(string name, bool clustered = true);
+        
+        IExistingTable AddForeignKey(string name, string foreignTableColumn, bool cascadeDelete = true);
+    }
+
+
+
+
+Migration Example:
+
+	class _20111023191558_create_users_table : Migration
+    {
+        protected override Migration Up()
+        {
+
+            this.CreateTable("users").WithInt32IdentityColumn("user_id")                  
+								.WithStringColumn("email", 50)          
+								.WithStringColumn("name", 20)                             
+								.WithPrimaryKey("user_id");
+
+			this.AlterTable("users").AddIndexOn("email");
+
+			this.CreateTable("orders").WithInt32IdentityColumn("order_id")                  
+								.WithInt32Column("user_id")                                      
+								.WithPrimaryKey("order_id")
+								.AddIndexOn("user_id")
+								.AddForeignKey("user_id", "users");
+
+            return this;
+        }
+
+        protected override Migration Down()
+        {
+            this.DropTable("users");
+
+            return this;
+        }
+    }
+    
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Section 9
+
+utilities
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Rapido library also includes various other utilities such as password hashing and cookie helpers
+
+
