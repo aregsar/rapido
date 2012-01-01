@@ -1,0 +1,24 @@
+﻿@model System.Web.Mvc.HandleErrorInfo
+
+@{
+    ViewBag.Title = "Error";
+    ViewBag.ControllerName = ((HandleErrorInfo)ViewData.Model).ControllerName;
+    
+}
+
+<h2>
+    Sorry, an error occurred while processing your request.
+</h2>
+
+<p>
+  Controller: @(((HandleErrorInfo)ViewData.Model).ControllerName)  
+</p>
+<p>
+  Action: @(((HandleErrorInfo)ViewData.Model).ActionName)
+</p>
+<p>
+  Message: @(((HandleErrorInfo)ViewData.Model).Exception.Message)
+</p>
+<p>
+  Stack Trace: @(((HandleErrorInfo)ViewData.Model).Exception.StackTrace)
+</p>

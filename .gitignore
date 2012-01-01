@@ -1,0 +1,8 @@
+Rapido/[Dd]ebug/
+Rapido/[Rr]elease/
+build/
+Rapido/[Bb]in/
+Rapido/[Oo]bj/
+*.suo
+*.sln.cache
+Rapido/*.user
